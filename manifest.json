@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "livingdoc2gherkin",
+  "version": "1.0",
+  "description": "Converts a LivingDoc scenario into gherkin syntax from the Azure extension",
+  "permissions": ["contextMenus"],
+  "icons": {
+    "48": "icon.png"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ]
+}
