@@ -3,7 +3,7 @@
   "name": "livingdoc2gherkin",
   "version": "1.0",
   "description": "Converts a LivingDoc scenario into gherkin syntax from the Azure extension",
-  "permissions": ["contextMenus"],
+  "permissions": ["contextMenus","scripting", "activeTab","clipboardWrite","clipboardRead"],
   "icons": {
     "48": "icon.png"
   },
@@ -13,7 +13,8 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.js"]
+      "js": ["content.js"],
+	  "all_frames": true
     }
   ]
 }
