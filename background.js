@@ -1,19 +1,25 @@
+// Define the label for the context menu item
 var menuItemLabel = "Copy as gherkin";
 
+// Set up the context menu item when the extension is installed or updated
 chrome.runtime.onInstalled.addListener(() => {
-	// add a new context menu element for links
-	chrome.contextMenus.create({
-		id: menuItemLabel,
-		title: menuItemLabel,
-		contexts: ["all"]
-	});
+  // Add a new context menu element for links
+  chrome.contextMenus.create({
+    id: menuItemLabel,
+    title: menuItemLabel,
+    contexts: ["all"]
+  });
 });
 
-// Send message to content.js when the new element is clicked
+// Listen for clicks on the context menu item
 chrome.contextMenus.onClicked.addListener((info, tab) => {
-	console.log(tab.id);
-	if (info.menuItemId === menuItemLabel) {
-		chrome.tabs.sendMessage(tab.id, "getClickedElt", {frameId: info.frameId});
-	}
-});
+  // Log the tab ID to the console
+  console.log(tab.id);
 
+  // Check if the clicked context menu item is the one we added
+  if (info.menuItemId === menuItemLabel) {
+    // Send a message to the content script of the active tab
+    // to request information about the clicked element
+    chrome.tabs.sendMessage(tab.id, "getClickedElt", { frameId: info.frameId });
+  }
+});

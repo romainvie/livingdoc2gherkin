@@ -1,6 +1,9 @@
 // variable to store the clicked element (a link)
 var clickedElt = null;
 
+// Access the top-level window
+var topLevelWindow = window.top;
+
 // Event listener for the "contextmenu" event on the document
 // This event is triggered when the user right-clicks to open the context menu
 document.addEventListener("contextmenu", function(event) {
@@ -183,18 +186,36 @@ function removeExtraSpacesAndLines(inputString) {
 
 // When the menu item is clicked, replace clicked link by an image
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
-		if(request == "getClickedElt") {
-			if (isTagFoundInParents(clickedElt, "div", "scenarios")){
-				//navigator.clipboard.writeText("CLIPBOARD");	
-				let content = parseScenario(clickedElt);
-				content = removeExtraSpacesAndLines(content);	
-				console.log(content);
-				//window.alert("Gherkin copied to clipboard.");
-			}
-			else{
-				window.alert("This is not a livingdoc scenario.");
-			}			
-		sendResponse(null);
+  // Check if the received message is a request for the clicked element
+  if (request === "getClickedElt") {
+    // Check if the clicked element has a parent with a specific tag and class
+    if (isTagFoundInParents(clickedElt, "div", "scenarios") || isTagFoundInParents(clickedElt, "li", "Background")) {
+      // Parse the scenario content
+      let content = parseScenario(clickedElt);
+      // Remove extra spaces and lines from the parsed content
+      content = removeExtraSpacesAndLines(content);
+      // Log the parsed content to the console
+      console.log(content);
+      
+      // Send the parsed content to the top-level window using postMessage
+      window.top.postMessage({ id: "getParsedText", message: content }, '*');
+    } else {
+      // Display an alert if the clicked element is not a livingdoc scenario
+      window.alert("This is not a livingdoc scenario.");
     }
+    
+    // Send a response to the message listener
+    sendResponse(null);
+  }
 });
 
+// Listen for messages from the top-level window
+window.addEventListener('message', function(event) {
+  // Check if the received message has the expected ID
+  if (event.data.id === "getParsedText") {
+    // Log a message indicating that the parsed text is copied
+    console.log("Parsed text copied.");
+    // Copy the parsed text to the clipboard using the Clipboard API
+    navigator.clipboard.writeText(event.data.message);
+  }
+});
