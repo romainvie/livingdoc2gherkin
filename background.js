@@ -18,8 +18,14 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 
   // Check if the clicked context menu item is the one we added
   if (info.menuItemId === menuItemLabel) {
-    // Send a message to the content script of the active tab
-    // to request information about the clicked element
-    chrome.tabs.sendMessage(tab.id, "getClickedElt", { frameId: info.frameId });
+	try {	
+		// Send a message to the content script of the active tab
+		// to request information about the clicked element
+		chrome.tabs.sendMessage(tab.id, "getClickedElt", { frameId: info.frameId });
+	} catch (err) {
+		console.error('Error sending message : receiving end does not exist:', err);
+	}
+	
+    
   }
 });
