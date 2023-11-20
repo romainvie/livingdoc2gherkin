@@ -49,8 +49,8 @@ function removeFirstTwoColumns(inputString) {
         return `| ${remainingColumns}`;
     });
 
-    // Join the processed lines back into a single string, excluding the last (empty) line
-    let resultString = processedLines.slice(0, -1).join('\n');
+    // Join the processed lines back into a single string
+    let resultString = processedLines.join('\n');
 
     // Return the final string with the first two columns removed from each line
     return resultString;
