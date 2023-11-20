@@ -24,8 +24,6 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
 		chrome.tabs.sendMessage(tab.id, "getClickedElt", { frameId: info.frameId });
 	} catch (err) {
 		console.error('Error sending message : receiving end does not exist:', err);
-	}
-	
-    
+	}    
   }
 });

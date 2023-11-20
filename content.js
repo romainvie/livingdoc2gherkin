@@ -1,16 +1,6 @@
 // variable to store the clicked element (a link)
 var clickedElt = null;
 
-// Access the top-level window
-var topLevelWindow = window.top;
-
-// Event listener for the "contextmenu" event on the document
-// This event is triggered when the user right-clicks to open the context menu
-document.addEventListener("contextmenu", function(event) {
-    // Retrieve the clicked element when the context menu is displayed
-    clickedElt = event.target;
-}, true);
-
 // Function to check if a specific tag with a given class is found in the ancestors of an element
 function isTagFoundInParents(el, type, tag) {
     // Iterate through the parent nodes of the given element
@@ -34,6 +24,9 @@ function isTagFoundInParents(el, type, tag) {
 
 // This function removes the first two columns from each line of a table represented by a markdown-style string
 function removeFirstTwoColumns(inputString) {
+	// Remove any final \n
+	inputString = (inputString.endsWith('\n')? inputString.slice(0,-1) : inputString);
+	
     // Split the input string into an array of lines
     let lines = inputString.split(/\r?\n/);
 
@@ -54,6 +47,60 @@ function removeFirstTwoColumns(inputString) {
 
     // Return the final string with the first two columns removed from each line
     return resultString;
+}
+
+// Function to calculate the element-wise maximum of two arrays
+function maxvector(a, b) {
+    // Use the map function to iterate over each element (e) and index (i) of array 'a'
+    // Calculate the maximum value between the corresponding elements of arrays 'a' and 'b'
+    const result = a.map((e, i) => Math.max(e, b[i]));
+
+    // Return the resulting array containing the element-wise maximum values
+    return result;
+}
+
+// Function to test whether a given string is either empty or consists only of whitespace characters
+function isNullOrWhitespace(input) {
+    // Check if the input is null, undefined, or an empty string
+    if (input == null || input === '') {
+        // If the input is null, undefined, or an empty string, return true
+        return true;
+    }
+
+    // Use a regular expression to test if the string contains only whitespace characters
+    // The regular expression /^\s*$/ checks if the string consists of zero or more whitespace characters from the beginning to the end
+    return /^\s*$/.test(input);
+}
+
+// Function to align a markdown-style table by adding necessary spaces or tabulations
+function alignMarkdownTable(input) {
+	// Remove any final \n
+	input = (input.endsWith('\n')? input.slice(0,-1) : input);
+
+	// Split the input string into rows  
+	const rows = input.split('\n');
+
+	// Extract the header row and determine the maximum column width for each column
+	const headerRow = rows[0];
+	let columnWidths = headerRow.split('|').map(column => column.trim().length);
+
+	// Initialize an array to store the maximum width for each column
+	for (let i = 1; i < rows.length; i++) {
+		columnWidths = maxvector(columnWidths, rows[i].split('|').map(column => column.trim().length));
+	}
+
+	// Generate the aligned table string
+	const alignedRows = rows.map(row => {
+		// Split each row into columns and trim whitespace
+		const columns = row.split('|').map(column => column.trim());
+		// Pad each column with spaces to match the maximum width
+		const alignedColumns = columns.map((column, index) => column.padEnd(columnWidths[index] + 1));
+		// Join the aligned columns with tabs and wrap in table formatting
+		return `${alignedColumns.join('| ')}`;
+	});
+
+	// Join the aligned rows with line breaks
+	return alignedRows.join('\n');
 }
 
 // This function parses a table structure represented by an HTML node and converts it into a markdown-style table.
@@ -86,9 +133,9 @@ function parseTable(node) {
     // If the current node is neither a table row nor a table cell, it may contain text content
     else {
         // Check if the node has text content
-        if (node.nodeType === Node.TEXT_NODE) {
-            // Append the text content followed by a space
-            textContent += node.textContent + " ";
+        if (node.nodeType === Node.TEXT_NODE && !isNullOrWhitespace(node.textContent)) {
+            // Append the text content followed by a space (if there's no final space already).
+            textContent += node.textContent + (node.textContent.endsWith(' ')? '' : ' ');
         }
 
         // Iterate over child nodes of the current node
@@ -132,7 +179,7 @@ function parseScenario(node) {
         }
 
         // Remove the first two columns from the resulting table
-        textContent = removeFirstTwoColumns(textContent);
+        textContent = alignMarkdownTable(removeFirstTwoColumns(textContent));
     }
     // Check if the current node represents a step argument table with the class "stepArgumentTable"
     else if (node.classList && (node.classList[0] || []).includes("stepArgumentTable")) {
@@ -141,7 +188,7 @@ function parseScenario(node) {
 
         // Iterate over child nodes of the current node and parse each as a table
         for (let childNode of node.childNodes) {
-            textContent += parseTable(childNode);
+            textContent += alignMarkdownTable(parseTable(childNode));
         }
     }
     // Check if the current node has certain classes that should be ignored
@@ -153,9 +200,9 @@ function parseScenario(node) {
         // Ignore this node for now
     } else {
         // Check if the node has text content
-        if (node.nodeType === Node.TEXT_NODE) {
-            // Append the text content followed by a space
-            textContent += node.textContent + " ";
+        if (node.nodeType === Node.TEXT_NODE && !isNullOrWhitespace(node.textContent)) {
+            // Append the text content followed by a space (if there's no final space already).
+            textContent += node.textContent + (node.textContent.endsWith(' ')? '' : ' ');
         }
 
         // Iterate over child nodes of the current node
@@ -169,53 +216,43 @@ function parseScenario(node) {
     return textContent;
 }
 
-// This function takes a string as input and removes multiple spaces and empty lines from it.
-function removeExtraSpacesAndLines(inputString) {
-    // Remove multiple spaces and replace with a single space
-    let stringWithoutExtraSpaces = inputString.replace(/ +/g, ' ');
-
-    // Remove empty lines
-    // The regular expression /^\s*[\r\n]/gm matches any line that contains only whitespace characters
-    // (\s*), followed by either a carriage return (\r) or newline (\n) character.
-    // The 'm' flag enables multiline mode, allowing the ^ and $ to match the start and end of each line.
-    let stringWithoutEmptyLines = stringWithoutExtraSpaces.replace(/^\s*[\r\n]/gm, '');
-
-    // Return the string with multiple spaces and empty lines removed
-    return stringWithoutEmptyLines;
-}
-
-// When the menu item is clicked, replace clicked link by an image
+// When the menu item is clicked, write the current scenario in the clipboard in Gherkin-style text
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
-  // Check if the received message is a request for the clicked element
-  if (request === "getClickedElt") {
-    // Check if the clicked element has a parent with a specific tag and class
-    if (isTagFoundInParents(clickedElt, "div", "scenarios") || isTagFoundInParents(clickedElt, "li", "Background")) {
-      // Parse the scenario content
-      let content = parseScenario(clickedElt);
-      // Remove extra spaces and lines from the parsed content
-      content = removeExtraSpacesAndLines(content);
-      // Log the parsed content to the console
-      console.log(content);
-      
-      // Send the parsed content to the top-level window using postMessage
-      window.top.postMessage({ id: "getParsedText", message: content }, '*');
-    } else {
-      // Display an alert if the clicked element is not a livingdoc scenario
-      window.alert("This is not a livingdoc scenario.");
-    }
-    
-    // Send a response to the message listener
-    sendResponse(null);
-  }
+	// Check if the received message is a request for the clicked element
+	if (request === "getClickedElt") {
+		// Check if the clicked element has a parent with a specific tag and class
+		if (isTagFoundInParents(clickedElt, "div", "scenarios") || isTagFoundInParents(clickedElt, "li", "Background")) {
+			// Parse the scenario content
+			let content = parseScenario(clickedElt);
+			// Log the parsed content to the console
+			console.log(content);
+
+			// Send the parsed content to the top-level window using postMessage
+			window.top.postMessage({ id: "getParsedText", message: content }, '*');
+		} else {
+			// Display an alert if the clicked element is not a livingdoc scenario
+			window.alert("This is not a livingdoc scenario.");
+		}
+
+		// Send a response to the message listener
+		sendResponse(null);
+	}
 });
+
+// Event listener for the "contextmenu" event on the document
+// This event is triggered when the user right-clicks to open the context menu
+document.addEventListener("contextmenu", function(event) {
+	// Retrieve the clicked element when the context menu is displayed
+	clickedElt = event.target;
+}, true);
 
 // Listen for messages from the top-level window
 window.addEventListener('message', function(event) {
-  // Check if the received message has the expected ID
-  if (event.data.id === "getParsedText") {
-    // Log a message indicating that the parsed text is copied
-    console.log("Parsed text copied.");
-    // Copy the parsed text to the clipboard using the Clipboard API
-    navigator.clipboard.writeText(event.data.message);
-  }
+	// Check if the received message has the expected ID
+	if (event.data.id === "getParsedText") {
+		// Log a message indicating that the parsed text is copied
+		console.log("Parsed text copied.");
+		// Copy the parsed text to the clipboard using the Clipboard API
+		navigator.clipboard.writeText(event.data.message);
+	}
 });
